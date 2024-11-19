@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	   <link rel="icon" href="heatmap.png" >
+    <title>Lab Tutorial: Creating a Heatmap for Chicago Robbery Crime Hotspots</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script> 
+    <script src="crimeData.js"></script> <!-- GeoJSON crime data -->
+    <style>
+                body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            background-image: linear-gradient(to right top, #a5f3fc, #67e8f9, #00dcf8, #00cff6, #00c2f3); 
+            color: #333;
+        }
+        #map { width: 100%; height: 500px; margin-top: 20px; }
+        .code-container {
+            position: relative;
+            background-color: #f7f7f8;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 20px;
+            font-family: 'Courier New', Courier, monospace;
+            overflow: auto;
+			background-color: #ffffff;
+            border-left: 5px solid #4CAF50; /* Green to match buttons */
+        }
+        .code-container pre {
+            margin: 0;
+            background: none;
+            padding: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+        .copy-btn {
+            background-color: #4CAF50; /* Green */
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            font-size: 12px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        .copy-btn:hover {
+            background-color: #45a049;
+        }
+        #map-title {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            background: rgba(255, 255, 255, 0.9);
+            color: black;
+            padding: 10px 20px;
+            border: 2px solid black;
+            border-radius: 5px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+        }
+        .content-section {
+            margin: 20px;
+            background-color: #e8f4f8; /* Light blue background for the content sections */
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        h2 {
+            color: #333;
+            background-color: #ffecd2; /* Light orange background for headings */
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .legend {
+            padding: 6px 8px;
+            line-height: 18px;
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+            border-radius: 5px;
+        }
+        .legend i {
+            width: 18px;
+            height: 18px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <h1><i class="fas fa-thermometer-three-quarters"></i>Interactive Heatmap for Chicago Robbery Crime Spots</h1>
+    <div class="content-section">
+        <h3><i class="fas fa-lightbulb"></i> Objective:</h3>
+        <p><b>In this lab, you will learn how to create an interactive heat map using Leaflet. By the end of this tutorial, you will have a full-featured heatmap that displays crime spots in Chicago.</p>
+		 <p>Please download the Excel file provided.Once  downloaded open it, you will find data fields on crime count,latitude,longitide,and community area names. Open this Excel file in QGIS. Fromthere, you will create a pointshapefile and then export it into a Geojson Layer. The steps to create point shapefile from excel data are explain in <a href="Tutorial to create point shapefile.pdf" download="Tutorial to create point shapefile.pdf">this PDF file</a>. Export  shapefile to a GeoJSON layer is already covered in previous lab.Place following at the vey beginning of the GeoJSON documement <code> var crimeData =  </code>. </p>
+   <a href="Robbery%20data.csv" download="Robbery data.csv">
+    Download Robbery Data
+</a>
+
+        <h2><i class="fas fa-paint-brush"></i> Step 1: Setting Up the HTML File</h2>
+        <p>First, create a new HTML file and add the following structure to set up the map. This includes adding references for Leaflet.js,Heat map plugin and setting up a basic page structure:</p>
+        <div class="code-container">
+            <button id ="copyBtn1" class="copy-btn" onclick="copyCode('step1','copyBtn1')">Copy Code</button>
+            <pre><code id="step1" class="language-html">&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+    &lt;meta charset="UTF-8&quot;&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
+    &lt;title&gt;Heatmap Tutorial: Chicago Robbery Crime Hotspots&lt;/title&gt;
+    &lt;link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" /&gt;
+    &lt;script src="https://unpkg.com/leaflet/dist/leaflet.js"&gt;&lt;/script&gt;
+    &lt;script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"&gt;&lt;/script&gt; &lt;!-- Don't forget to add heat map plugin --&gt; 
+    &lt;script src="crimeData.js"&gt;&lt;/script&gt; &lt;!-- GeoJSON crime data, name it same as you give your Geojson data --&gt;      
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;div id="map-title">2023 Chicago Robbery Crime Hotspots&lt;/div&gt;
+    &lt;div id="map" style="height: 600px;">&lt;/div&gt;
+	
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+        </div>
+        <p><strong>Checklist:</strong></p>
+        <ul>
+            <li>Ensure you have a <code>&lt;div&gt;</code> with the ID of <code>map</code> inside the body.</li>
+            <li>Include the necessary Leaflet CSS and JavaScript files in the head section.</li>
+			</ul>
+			<h2><i class="fas fa-paint-brush"></i> Step 2: Add CSS for Styling</h2>
+<p>Add these lines in the head section inside <code>&lt;style&gt;</code> tag.</p>
+<div class="code-container">
+        <button id="copyBtn2" class="copy-btn" onclick="copyCode('step2', 'copyBtn2')">Copy Code</button>
+        <pre><code id="step2" class="language-js">
+&lt;style&gt;
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+    }
+
+    #map {
+        width: 100%;
+        height: 100vh;
+    }
+
+    #map-title {
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        background: rgba(255, 255, 255, 0.9);
+        color: black;
+        padding: 10px 20px;
+        font-size: 24px;
+        font-weight: bold;
+        text-align: center;
+        border: 2px solid black;
+        border-radius: 5px;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .legend {
+        background: white;
+        padding: 10px;
+        line-height: 18px;
+        color: #555;
+        font-size: 14px;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+        border-radius: 5px;
+    }
+
+    .legend i {
+        width: 18px;
+        height: 18px;
+        float: left;
+        margin-right: 8px;
+        opacity: 0.7;
+    }
+
+    .custom-tooltip {
+        background: white;
+        border: 1px solid gray;
+        padding: 5px;
+        color: black;
+        font-size: 12px;
+        border-radius: 3px;
+        box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.3);
+    }
+&lt;/style&gt;
+</code></pre>
+</div>
+
+              <h2><i class="fas fa-map-marked-alt"></i> Step 3: Initialize the Map</h2>
+        <p>Next, we will add JavaScript to initialize the map and set the center point over Chicago. Add the following code inside a <code>&lt;script&gt;</code> tag at the end of the body after div element:</p>
+        <div class="code-container">
+            <button id="copyBtn3" class="copy-btn" onclick="copyCode('step3', 'copyBtn3')">Copy Code</button>
+           <pre><code id="step3" class="language-js">
+&lt;script&gt;
+var map = L.map('map', {
+    center: [41.85, -87.65], // Center on Chicago
+    zoom: 11, // Set appropriate zoom level
+    maxZoom: 15,
+    minZoom: 10,
+});
+
+L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
+    attribution: 'Map tiles by Carto, under CC BY 3.0. Data by OpenStreetMap, under ODbL.',
+}).addTo(map);
+&lt;/script&gt;
+</code></pre>
+        </div>
+        <p><strong>Checklist:</strong></p>
+        <ul>
+            <li>Ensure the script is added at the end of the body so the HTML elements are loaded before the JavaScript runs.</li>
+            <li>The <code>map</code> ID in <code>L.map('map')</code> must match the <code>&lt;div&gt;</code> ID.</li>
+        </ul>
+
+        <h2><i class="fas fa-fire-alt"></i> Step 4: Adding the Heatmap Layer</h2>
+        <p>We will now add the heatmap layer to the map. This layer will visualize the crime data using varying intensities based on the data provided in the GeoJSON file. Add this code below the map initialization:</p>
+        <div class="code-container">
+            <button id="copyBtn4" class="copy-btn" onclick="copyCode('step4', 'copyBtn4')">Copy Code</button>
+           <pre><code id="step4" class="language-js">
+// Prepare the heatmap data
+var heatPoints = crimeData.features.map(function(feature) {
+    var coords = feature.geometry.coordinates;
+    var intensity = parseFloat(feature.properties["Crime count"]);  // Crime count name it same as in your geojson data
+    return [coords[1], coords[0], intensity]; // Lat, Lng, Intensity
+});
+
+// Add the heatmap layer
+var heat = L.heatLayer(heatPoints, {
+    radius: 25,
+    blur: 15,
+    maxZoom: 17,
+    opacity: 0.6
+}).addTo(map);
+</code></pre>
+        </div>
+        <p><strong>Checklist:</strong></p>
+        <ul>
+            <li>Ensure the heatmap data is correctly mapped from <code>crimeData.features</code>.</li>
+            <li>Check that the GeoJSON file is loaded correctly without any errors.</li>
+        </ul>
+
+        <h2><i class="fas fa-info-circle"></i> Step 5: Adding Tooltips for More Information</h2>
+        <p>To provide more context to the map, we will add tooltips that show the community name and crime Count when users hover over specific areas. Add the following code below heat map layer to create invisible markers with tooltips:</p>
+        <div class="code-container">
+           <button id="copyBtn5" class="copy-btn" onclick="copyCode('step5', 'copyBtn5')">Copy Code</button>
+           <pre><code id="step5" class="language-js">
+// Add invisible circle markers with mouseover functionality
+crimeData.features.forEach(function(feature) {
+    var coords = feature.geometry.coordinates;
+    var communityName = feature.properties["Community Area"]; // Community Area name it same as in your geojson data
+
+    var marker = L.circleMarker([coords[1], coords[0]], {
+        radius: 10,
+        color: 'transparent',
+        fillOpacity: 0.01,
+    }).addTo(map);
+
+    // Mouseover tooltip
+    marker.on('mouseover', function() {
+        marker.bindTooltip(`Community: ${communityName}<br> Crime count: ${feature.properties["Crime count"]}`, { 
+            permanent: false,
+            direction: "top",
+            opacity: 0.9,
+            className: 'custom-tooltip'
+        }).openTooltip();
+    });
+
+    // Close tooltip on mouseout
+    marker.on('mouseout', function() {
+        marker.closeTooltip();
+    });
+});
+</code></pre>
+        </div>
+        <p><strong>Checklist:</strong></p>
+        <ul>
+            <li>Ensure the tooltips are visible on mouseover and close on mouseout.</li>
+            <li>Make sure the tooltip shows the correct community and crime count information.</li>
+        </ul>
+
+         <h2><i class="fas fa-tasks"></i> Step 6: Adding a Legend</h2>
+        <p>Finally, we will add a legend to help users understand the color gradient representing the crime density. Add the following code at the end of the script section:</p>
+        <div class="code-container">
+            <button id="copyBtn6" class="copy-btn" onclick="copyCode('step6', 'copyBtn6')">Copy Code</button>
+           <pre><code id="step6" class="language-js">
+// Add legend control for "High to Low" gradient
+var legend = L.control({ position: 'bottomright' });
+
+legend.onAdd = function(map) {
+    var div = L.DomUtil.create('div', 'legend');
+    var grades = ['High', 'Moderate-High', 'Moderate', 'Moderate-Low', 'Low', 'Very Low']; // Updated labels for clarity
+    var colors = ['#f00', '#f90', '#ff0', '#0f0', '#0ff', '#00f']; // Gradient colors
+
+    div.innerHTML += '&lt;h4&gt;Crime Count&lt;/h4&gt;';
+    for (var i = 0; i &lt; grades.length; i++) {
+        div.innerHTML +=
+            '&lt;i style="background:' + colors[i] + '; width: 18px; height: 18px; display: inline-block; margin-right: 4px;"&gt;&lt;/i&gt; ' +
+            grades[i] + '&lt;br&gt;';
+    }
+
+    return div;
+};
+
+legend.addTo(map);
+</code></pre>
+        </div>
+        <p><strong>Checklist:</strong></p>
+        <ul>
+            <li>Ensure the legend appears at the bottom right of the map.</li>
+            <li>Verify that the colors and labels match the heatmap intensity.</li>
+        </ul>
+
+        <h2><i class="fas fa-map-marked"></i> Final Step: Viewing the Complete Map</h2>
+        <p>After completing all the steps, your map should look like the one below:</p>
+        <div id="map"></div>
+       
+<script>
+var map = L.map('map', {
+    center: [41.85, -87.65], // Center on Chicago
+    zoom: 11, // Set appropriate zoom level
+    maxZoom: 15,
+    minZoom: 10,
+});
+
+L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
+    attribution: 'Map tiles by Carto, under CC BY 3.0. Data by OpenStreetMap, under ODbL.',
+}).addTo(map);
+
+// Prepare the heatmap data
+var heatPoints = crimeData.features.map(function(feature) {
+    var coords = feature.geometry.coordinates;
+    var intensity = parseFloat(feature.properties["Crime count"]);  // Crime count name it same as in your geojson data
+    return [coords[1], coords[0], intensity]; // Lat, Lng, Intensity
+});
+
+// Add the heatmap layer
+var heat = L.heatLayer(heatPoints, {
+    radius: 25,
+    blur: 15,
+    maxZoom: 17,
+    opacity: 0.6
+}).addTo(map);
+
+            // Add invisible circle markers with mouseover functionality
+            crimeData.features.forEach(function(feature) {
+                var coords = feature.geometry.coordinates;
+                var communityName = feature.properties["Community Area"];
+
+                var marker = L.circleMarker([coords[1], coords[0]], {
+                    radius: 10,
+                    color: 'transparent',
+                    fillOpacity: 0.01,
+                }).addTo(map);
+
+                // Mouseover tooltip
+                marker.on('mouseover', function() {
+                    marker.bindTooltip(`Community: ${communityName}<br>Crime count: ${feature.properties["Crime count"]}`, {
+                        permanent: false,
+                        direction: "top",
+                        opacity: 0.9,
+                        className: 'custom-tooltip'
+                    }).openTooltip();
+                });
+
+                // Close tooltip on mouseout
+                marker.on('mouseout', function() {
+                    marker.closeTooltip();
+                });
+            });
+
+            // Add legend control for "High to Low" gradient
+var legend = L.control({ position: 'bottomright' });
+
+legend.onAdd = function(map) {
+    var div = L.DomUtil.create('div', 'legend');
+    var grades = ['High', 'Moderate-High', 'Moderate', 'Moderate-Low', 'Low', 'Very Low']; // Updated labels for clarity
+    var colors = ['#f00', '#f90', '#ff0', '#0f0', '#0ff', '#00f']; // Gradient colors
+
+    div.innerHTML += '<h4>Crime count</h4>';
+    for (var i = 0; i < grades.length; i++) {
+        div.innerHTML +=
+            '<i style="background:' + colors[i] + '; width: 18px; height: 18px; display: inline-block; margin-right: 4px;"></i> ' +
+            grades[i] + '<br>';
+    }
+
+    return div;
+};
+
+    legend.addTo(map);
+        </script>
+
+       <h2><i class="fas fa-clipboard-list"></i> Summary</h2>
+        <p>In this tutorial, you have learned how to create an interactive heatmap showing Chicago robbery crime hotspots by following these steps:</p>
+        <ul>
+            <li><strong>Step 1:</strong> Set up the HTML structure.</li>
+		    <li><strong>Step 2:</strong> Add Css for styling</li>
+            <li><strong>Step 3:</strong> Initialize the map and add a tile layer.</li>
+            <li><strong>Step 4:</strong> Add the heatmap layer with crime data.</li>
+            <li><strong>Step 5:</strong> Add tooltips to provide more information.</li>
+            <li><strong>Step 6:</strong> Add a legend to explain the color gradient of the heatmap.</li>
+        </ul>
+    </div>
+    <script>
+        function copyCode(stepId, buttonId) {
+            var code = document.getElementById(stepId).innerText;
+            navigator.clipboard.writeText(code).then(() => {
+                var button = document.getElementById(buttonId);
+                var originalText = button.innerHTML;
+                button.innerHTML = 'Copied!';  // Change button text to "Copied!"
+
+                // Revert button text back to original after 2 seconds
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+            });
+        }
+    </script>
+</body>
+</html>
+
